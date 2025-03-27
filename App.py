@@ -1,13 +1,21 @@
 import streamlit as st
 import numpy as np
 import pickle
+from sklearn.preprocessing import StandardScaler
 
 # Load trained models
-with open("crop_recommendation.pkl", "rb") as f:
+with open("crop_recommendation_2.pkl", "rb") as f:
     crop_model = pickle.load(f)
+
+with open("crop_scalor.pkl", "rb") as scaler_file:
+    sc = pickle.load(scaler_file)
 
 with open("fertilizer_recommendation.pkl", "rb") as f:
     fertilizer_model = pickle.load(f)
+
+with open("fertilizer_scalor.pkl", "rb") as f:
+    fc = pickle.load(f)
+
 
 # Crop Mapping
 crop_dict = {
@@ -41,14 +49,16 @@ rainfall = st.number_input("Rainfall (mm)", min_value=0.0, step=0.1)
 if st.button("🔍 Recommend Crop & Fertilizer"):
     # Crop Prediction
     crop_input = np.array([[nitrogen, phosphorus, potassium, temperature, humidity, pH, rainfall]])
-    crop_prediction = crop_model.predict(crop_input)[0]
-    predicted_crop = crop_dict.get(crop_prediction, "Unknown Crop")
+    crop_input = sc.transform(crop_input)
+    crop_prediction = crop_model.predict(crop_input).reshape(1,-1)[0]
+    predicted_crop = crop_dict.get(crop_prediction[0], "Unknown Crop")
 
     # Fertilizer Prediction (Now using 7 features instead of 8)
    
-    fert_input = np.array([[nitrogen, phosphorus, potassium, temperature, humidity, pH, rainfall, 0]])  # Add a placeholder value
-    fert_prediction = fertilizer_model.predict(fert_input)[0]
-    predicted_fertilizer = fert_dict.get(fert_prediction, "Unknown Fertilizer")
+    fert_input = np.array([[temperature,humidity,0.6,2,crop_prediction[0],nitrogen, potassium, phosphorus]])  # Add a placeholder value
+    fert_input = fc.transform(fert_input)
+    fert_prediction = fertilizer_model.predict(fert_input).reshape(1,-1)[0]
+    predicted_fertilizer = fert_dict.get(fert_prediction[0], "Unknown Fertilizer")
 
     # Display Results
     st.success(f"✅ Recommended Crop: **{predicted_crop}**")
